@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text Summarizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="author-credit">BY CHAKRADHAR<br>SWATRIX INNOVATIONS</div>
+
+    <div class="container">
+        <header>
+            <h1 class="title">AI Text Summarizer</h1>
+            <p class="subtitle">Transform long texts into concise, intelligent summaries powered by advanced AI</p>
+            </header>
+
+        <main>
+            <div class="card input-card">
+                <button class="action-btn" id="clear-btn" title="Clear Text">🗑️</button>
+                <h2><span class="icon">📝</span> Input Text</h2>
+                <p>Paste or type the text you want to summarize below</p>
+                <form id="summarizer-form">
+                    <textarea id="input-text" placeholder="Paste your text here and watch the magic happen..."></textarea>
+                    
+                    <div class="text-stats">
+                        <span>Words: <b id="word-count">0</b></span>
+                        <span>Characters: <b id="char-count">0</b></span>
+                    </div>
+
+                    <div class="options-container">
+                        <h3>Summary Length:</h3>
+                        <div class="length-options">
+                            <button type="button" class="length-btn" data-length="short">Short</button>
+                            <button type="button" class="length-btn active" data-length="medium">Medium</button>
+                            <button type="button" class="length-btn" data-length="long">Long</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="summarize-btn">
+                        ✨ Summarize
+                    </button>
+                </form>
+            </div>
+
+            <div class="card output-card" id="output-container">
+                <button class="action-btn" id="copy-btn" title="Copy Summary">📋</button>
+                <h2><span class="icon">📄</span> Your Summary</h2>
+                <div id="summary-result">
+                    <p id="summary-text"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const summarizerForm = document.getElementById('summarizer-form');
+        const inputText = document.getElementById('input-text');
+        const summarizeBtn = document.getElementById('summarize-btn');
+        const outputContainer = document.getElementById('output-container');
+        const summaryTextElement = document.getElementById('summary-text');
+        const wordCountEl = document.getElementById('word-count');
+        const charCountEl = document.getElementById('char-count');
+        const lengthBtns = document.querySelectorAll('.length-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        
+        let currentLength = 'medium';
+
+        inputText.addEventListener('input', () => {
+            const text = inputText.value;
+            charCountEl.textContent = text.length;
+            const words = text.trim().split(/\s+/).filter(word => word !== '');
+            wordCountEl.textContent = text.trim() === '' ? 0 : words.length;
+        });
+
+        lengthBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                lengthBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLength = btn.dataset.length;
+            });
+        });
+
+        summarizerForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            if (inputText.value.trim() === '') {
+                alert('Please enter some text to summarize.');
+                return;
+            }
+
+            summarizeBtn.disabled = true;
+            summarizeBtn.innerHTML = '⌛ Summarizing...';
+            outputContainer.style.display = 'block';
+            summaryTextElement.textContent = 'Generating your summary, please wait...';
+            copyBtn.innerHTML = '📋';
+
+            try {
+                const response = await fetch('/summarize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: inputText.value,
+                        summary_length: currentLength
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Something went wrong.');
+                }
+
+                const data = await response.json();
+                summaryTextElement.textContent = data.summary;
+            } catch (error) {
+                console.error('Error:', error);
+                summaryTextElement.textContent = 'Error: ' + error.message;
+            } finally {
+                summarizeBtn.disabled = false;
+                summarizeBtn.innerHTML = '✨ Summarize';
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            inputText.value = '';
+            outputContainer.style.display = 'none';
+            inputText.dispatchEvent(new Event('input'));
+        });
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(summaryTextElement.textContent).then(() => {
+                copyBtn.innerHTML = '✅ Copied!';
+                setTimeout(() => { copyBtn.innerHTML = '📋'; }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        });
+    </script>
+    </body>
+</html>
